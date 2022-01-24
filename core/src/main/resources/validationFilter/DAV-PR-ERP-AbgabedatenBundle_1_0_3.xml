@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<filterlist>
+    <filter>
+        <!--Fehler im Abgabedaten Verison 1.0.3 ....-->
+        <severityPattern>information</severityPattern>
+        <locationPattern>Bundle\.entry\[\d+\]\.resource\.ofType\(MedicationDispense\)\.extension\[\d+\]\.value\.ofType\(Reference\)</locationPattern>
+        <messagePattern>.*http://fhir\.abda\.de/eRezeptAbgabedaten/StructureDefinition/DAV-PR-ERP-ZusatzdatenHerstellung.*</messagePattern>
+    </filter>
+</filterlist>
