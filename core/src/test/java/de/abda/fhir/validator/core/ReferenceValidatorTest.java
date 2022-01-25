@@ -45,7 +45,7 @@ class ReferenceValidatorTest {
     }
 
     /**
-     * Stellt sicher, dass Beispieldateien, die wir für valide halten keinerlei Validierungsmeldungen enthalten.
+     * Stellt sicher das der ReferenceValidator für Beispieldateien, die wir für valide halten, keinerlei Validierungsmeldungen zurück gibt.
      * @param path Die Datei die validiert werden soll
      */
     @ParameterizedTest
@@ -53,21 +53,66 @@ class ReferenceValidatorTest {
     void validateValidFile(Path path) {
         Map<ResultSeverityEnum, List<SingleValidationMessage>> resultMap = validator
                 .validateFile(path);
-//        String mapAsString = resultMap.keySet().stream()
-//                .map(key -> key + ": " + resultMap.get(key).size())
-//                .collect(Collectors.joining(","));
-//        System.out.println(mapAsString);
+
         List<SingleValidationMessage> messages = getMessagesWithSeverity(resultMap, Arrays.asList(ResultSeverityEnum.values()));
         if(messages.size() > 0){
             logger.warn("Es sollten keine Validierungsmeldungen gefunden werden, es wurden aber {} zurückgegeben.", messages.size());
+            String mapAsString = resultMap.keySet().stream()
+                .map(key -> key + ": " + resultMap.get(key).size())
+                .collect(Collectors.joining(","));
+            logger.warn("Validierungsmeldungen: {}", mapAsString);
         }
         assertEquals(0, messages.size());
     }
 
+    /**
+     * Stellt sicher das der ReferenceValidator für Beispieldateien, die wir für invalide halten Validierungsmeldungen zurück gibt.
+     * @param path Die Datei die validiert werden soll
+     */
+    @ParameterizedTest
+    @MethodSource
+    void validateInvalidFiles(Path path) {
+        Map<ResultSeverityEnum, List<SingleValidationMessage>> resultMap = validator
+                .validateFile(path);
+        List<SingleValidationMessage> messages = getMessagesWithSeverity(resultMap, Arrays.asList(ResultSeverityEnum.values()));
+        assertNotEquals(0, messages.size());
+    }
+
+    /**
+     * Test zum identifizieren von Info-Messages bei invaliden Dateien. Hypothese: Infomeldungen sollten nicht kritisch sein
+     * und auf einer Whitelist landen
+     * @param path Pfad zur Tetsdatei
+     */
+    @ParameterizedTest
+    @MethodSource(value = "validateInvalidFiles")
+    void getInfoMessagesForInvalidFiles(Path path) {
+        Map<ResultSeverityEnum, List<SingleValidationMessage>> resultMap = validator
+                .validateFile(path);
+        List<SingleValidationMessage> messages = getMessagesWithSeverity(resultMap, Arrays.asList(ResultSeverityEnum.INFORMATION));
+        messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+    }
+
+    /**
+     * Test zum identifizieren von Warn-Messages bei invaliden Dateien. Hypothese: Warnungen sollten kritisch sein
+     * @param path Pfad zur Testdatei
+     */
+    @ParameterizedTest
+    @MethodSource(value = "validateInvalidFiles")
+    void getWarningMessagesForInvalidFiles(Path path) {
+        logger.info("Testdatei:{}", path);
+        Map<ResultSeverityEnum, List<SingleValidationMessage>> resultMap = validator
+                .validateFile(path);
+        List<SingleValidationMessage> messages = getMessagesWithSeverity(resultMap, Arrays.asList(ResultSeverityEnum.WARNING));
+        messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+    }
+
+    private static Stream<Path> validateInvalidFiles() throws IOException {
+        return Files.walk(INVALID_BULK_DIR).filter(path -> path.toString().endsWith(".xml"));
+    }
+
 
     private static Stream<Path> validateValidFile() throws IOException {
-        Stream<Path> files = Files.walk(VALID_BASE_DIR).filter(path -> path.toString().endsWith(".xml"));
-        return files;
+        return Files.walk(VALID_BASE_DIR).filter(path -> path.toString().endsWith(".xml"));
     }
 
     @ParameterizedTest
@@ -85,7 +130,7 @@ class ReferenceValidatorTest {
                 .anyMatch(message -> message.getMessage().contains(arguments.getValue())));
     }
 
-    private static Stream<Pair<Path, String>> validateInvalidFile() throws IOException {
+    private static Stream<Pair<Path, String>> validateInvalidFile() {
         return Stream.of(
                 of(INVALID_BASE_DIR.resolve("InvalidEprescriptionBundle1.xml"),
                         "Der Wert ist \"https://fhir.kbv.de/CodeSystem/Wrong\", muss aber \"https://fhir.kbv.de/CodeSystem/KBV_CS_ERP_Section_Type\" sein")
@@ -118,8 +163,7 @@ class ReferenceValidatorTest {
         Assertions.assertThrows(arguments.getRight(), () -> validator.validateFile(arguments.getKey()));
     }
 
-    private static Stream<Pair<Path, Class<? extends Exception>>> validateFileWithException()
-            throws IOException {
+    private static Stream<Pair<Path, Class<? extends Exception>>> validateFileWithException() {
         return Stream.of(
                 of(EXCEPTION_BASE_DIR.resolve("NotExistingBundle.xml"),
                         ValidatorInitializationException.class),
