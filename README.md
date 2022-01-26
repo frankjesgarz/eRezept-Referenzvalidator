@@ -18,7 +18,7 @@
 
 ## Projektziele
 
-* Der Referenzvalidator dient als "Schiedsrichter", mit dem ohne weitere Voraussetzungen FHIR Dateien auf Ihre Validität (valid oder nicht valid) getestet werden können. Die einzig relevante Ausgabe ist 'Validation result: true' oder 'Validation result: false'. Zusätzlich ausgegebene Warnings sind ausschließlich informell und haben keinen Einfluss auf das Ergebnis. Das positive Testergebnis ist __eine__ Voraussetzung für die Annahme von Datenlieferungen zwischen Apothekenrechenzentren und Krankenkassen(-Annahmestellen). __Alle__ weitern Akzeptanzkriterien werden werden in der TA7 Spezifikation festgelegt.
+* Der Referenzvalidator dient als "Schiedsrichter", mit dem ohne weitere Voraussetzungen FHIR Dateien auf Ihre Validität (valid oder nicht valid) getestet werden können. Die einzig relevante Ausgabe ist 'Validation filteredValidationResult: true' oder 'Validation filteredValidationResult: false'. Zusätzlich ausgegebene Warnings sind ausschließlich informell und haben keinen Einfluss auf das Ergebnis. Das positive Testergebnis ist __eine__ Voraussetzung für die Annahme von Datenlieferungen zwischen Apothekenrechenzentren und Krankenkassen(-Annahmestellen). __Alle__ weitern Akzeptanzkriterien werden werden in der TA7 Spezifikation festgelegt.
 * Es werden ausschließlich in den entsprechenden FHIR-Profilen enthaltene Constraints geprüft.
 * Es wird immer nur genau eine FHIR-XML-Datei geprüft. Als Base64-eingebettete weitere FHIR-Daten müssen durch separate Schritte/Aufrufe extrahiert und geprüft werden.
 

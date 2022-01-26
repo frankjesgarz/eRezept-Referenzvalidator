@@ -4,7 +4,6 @@ package de.abda.fhir.validator.core.filter.regex;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +17,9 @@ import org.slf4j.LoggerFactory;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,6 +28,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Dzmitry Liashenka
  */
 public class RegExMessageFilterTest {
+
+    private static final String ISSUE_1 = "Issue-001";
+    private static final String ISSUE_2 = "Issue-002";
+    private static final String ISSUE_3 = "Issue-003";
+    private static final String ISSUE_4 = "Issue-004";
 
     private final Logger logger = LoggerFactory.getLogger(RegExMessageFilter.class);
 
@@ -103,21 +110,25 @@ public class RegExMessageFilterTest {
         List<FilterDefinition> filterBeschreibungsListe = new ArrayList<>();
 
         FilterDefinition info = new FilterDefinition();
+        info.setIssueId(ISSUE_1);
         info.setSeverityPattern(Pattern.compile(ResultSeverityEnum.INFORMATION.getCode()));
         info.setMessagePattern(Pattern.compile(MESSAGE_PATTERN_INFO));
         info.setLocationPattern(Pattern.compile(LOCATION_PATTERN_INFO));
 
         FilterDefinition warn = new FilterDefinition();
+        warn.setIssueId(ISSUE_2);
         warn.setSeverityPattern(Pattern.compile(ResultSeverityEnum.WARNING.getCode()));
         warn.setMessagePattern(Pattern.compile(MESSAGE_PATTERN_WARN));
         warn.setLocationPattern(Pattern.compile(LOCATION_PATTERN_WARN));
 
         FilterDefinition error = new FilterDefinition();
+        error.setIssueId(ISSUE_3);
         error.setSeverityPattern(Pattern.compile(ResultSeverityEnum.ERROR.getCode()));
         error.setMessagePattern(Pattern.compile(MESSAGE_PATTERN_ERROR));
         error.setLocationPattern(Pattern.compile(LOCATION_PATTERN_ERROR));
 
         FilterDefinition fatal = new FilterDefinition();
+        fatal.setIssueId(ISSUE_4);
         fatal.setSeverityPattern(Pattern.compile(ResultSeverityEnum.FATAL.getCode()));
         fatal.setMessagePattern(Pattern.compile(MESSAGE_PATTERN_FATAL));
         fatal.setLocationPattern(Pattern.compile(LOCATION_PATTERN_FATAL));
@@ -130,7 +141,7 @@ public class RegExMessageFilterTest {
         // Attribute setzen!
         // Objekt Unmarshallen String > Bean
         RegExMessageFilter filter = this.loadFilter(PATH_TO_FILTER_XML);
-        List<FilterDefinition> unmarshallList = filter.getFilterDefinitionListe();
+        List<FilterDefinition> unmarshallList = filter.getFilterDefinitions();
 
         // Objekt Marshallen Bean > String
         StringWriter sw = new StringWriter();
@@ -155,7 +166,6 @@ public class RegExMessageFilterTest {
         assertEquals(filterBeschreibungsListe.get(3).getMessagePattern().pattern(), unmarshallList.get(3).getMessagePattern().pattern());
         assertEquals(filterBeschreibungsListe.get(3).getLocationPattern().pattern(), unmarshallList.get(3).getLocationPattern().pattern());
     }
-
 
     /**
      * Testet die Implementation der Methode {@linkplain RegExMessageFilter#filter(List)}

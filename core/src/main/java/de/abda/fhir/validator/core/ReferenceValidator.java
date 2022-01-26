@@ -3,9 +3,8 @@ package de.abda.fhir.validator.core;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
-import de.abda.fhir.validator.core.filter.*;
-import de.abda.fhir.validator.core.filter.regex.FilterBeschreibungsListe;
-import de.abda.fhir.validator.core.filter.regex.RegExMessageFilter;
+import ca.uhn.fhir.validation.ValidationResult;
+import de.abda.fhir.validator.core.filter.FilterRules;
 import de.abda.fhir.validator.core.util.FileHelper;
 import de.abda.fhir.validator.core.util.Profile;
 import de.abda.fhir.validator.core.util.ProfileHelper;
@@ -13,13 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This is the default class to use the ABDA FHIR validator in your Java Application.
@@ -32,14 +29,11 @@ import java.util.stream.Collectors;
  * further FHIR resources in the same or another thread.</p>
  */
 public class ReferenceValidator {
-    private static final String MESSAGE_NO_FILTER_DEFINED = "Es wurde keine Filter für das Profil {} definiert.";
-    public static final String VALIDATION_FILTER_PROPERTIES = "/validationFilter/validationFilter.properties";
     static Logger logger = LoggerFactory.getLogger(Validator.class);
-    private static final String ERROR_CANT_READ_PROPERTIES = "Fehler beim Einlesen der Properties aus der Quelle:{}).";
-    private final Properties profileFilters;
-    private final Map<Profile, Optional<MessageFilter>> messageFilters = new HashMap<>();
     private final FhirContext ctx;
     private final ValidatorHolder validatorHolder;
+    private final FilterRules filterRules;
+
 
     /**
      * Creates a new instance without parameters.
@@ -55,24 +49,11 @@ public class ReferenceValidator {
      */
     public ReferenceValidator(FhirContext ctx) {
         this.ctx = ctx;
-        validatorHolder = new ValidatorHolder(ctx);
-        profileFilters = new Properties();
-        loadValidationFilterProperties();
+        validatorHolder = new ValidatorHolder(this.ctx);
+        filterRules = new FilterRules();
     }
 
-    /**
-     * Loads a properties file which defines which {@link  FilterBeschreibungsListe} is to be used for each FHIR profile.
-     * The key of each property is the profile including the profile version (if present). The value is the path
-     * to the XMl file containing the filter rules.
-     */
-    private void loadValidationFilterProperties() {
-        URL propertiesUrl = this.getClass().getResource(VALIDATION_FILTER_PROPERTIES);
-        try (InputStream is = propertiesUrl.openStream()) {
-            profileFilters.load(is);
-        } catch (IOException|NullPointerException e) {
-            throw new RuntimeException(String.format(ERROR_CANT_READ_PROPERTIES, propertiesUrl), e);
-        }
-    }
+
 
     /**
      * Validates the given File
@@ -123,49 +104,21 @@ public class ReferenceValidator {
         InputStream validatorInputStream = new ByteArrayInputStream(validatorInputAsString.getBytes(StandardCharsets.UTF_8));
         Profile profile = ProfileHelper.getProfileFromXmlStream(validatorInputStream);
         Validator validator = validatorHolder.getValidatorForProfile(profile);
-        Map<ResultSeverityEnum, List<SingleValidationMessage>> messageMap = validator.validate(validatorInputAsString);
-
-        //filter  List of ValidationMessages if a filter for the given profile is defined
-        Optional<MessageFilter> filter = loadFilterForProfile(profile);
-        if (filter.isPresent()) {
-            List<SingleValidationMessage> filteredList = messageMap.values().stream().flatMap(Collection::stream).collect(Collectors.toList());
-            filter.get().filter(filteredList);
-            return recreateMap(filteredList);
-        } else {
-            return messageMap;
-        }
-
+        return validator.validate(validatorInputAsString);
     }
 
-    private Map<ResultSeverityEnum, List<SingleValidationMessage>> recreateMap(List<SingleValidationMessage> messages) {
-        return messages.stream().collect(Collectors.groupingBy(SingleValidationMessage::getSeverity, Collectors.toList()));
+    public FilteredValidationResult validateFileWithFilters(Path path) {
+        String validatorInputAsString = FileHelper.loadValidatorInputAsString(path.toString(), false);
+        return validateStringWithFilters(validatorInputAsString);
     }
 
-    /**
-     * Returns an optional {@link MessageFilter} for the passed in {@link Profile} which can be used to filter a List of
-     * Validation Messages.
-     * @param profile the profile
-     * @return an Optional containing the {@link MessageFilter} for the profile or <code>Optional.empty</code> if no filter
-     * for the profile was defined.
-     */
-    private Optional<MessageFilter> loadFilterForProfile(Profile profile) {
-        Optional<MessageFilter> filter;
-        if (messageFilters.containsKey(profile)) {
-            filter = messageFilters.get(profile);
-        } else {
-            String profileAndVersion = profile.getCanonical().substring(profile.getCanonical().lastIndexOf('/') + 1);
-
-            String filterXML = profileFilters.getProperty(profileAndVersion);
-            if (filterXML != null) {
-                URL url = this.getClass().getResource(filterXML);
-                filter = Optional.of(new RegExMessageFilter(url));
-            } else {
-                logger.info(MESSAGE_NO_FILTER_DEFINED, profile.getCanonical());
-                filter = Optional.empty();
-            }
-            messageFilters.put(profile, filter);
-        }
-        return filter;
-
+    public FilteredValidationResult validateStringWithFilters(String validatorInputAsString) {
+        InputStream validatorInputStream = new ByteArrayInputStream(validatorInputAsString.getBytes(StandardCharsets.UTF_8));
+        Profile profile = ProfileHelper.getProfileFromXmlStream(validatorInputStream);
+        Validator validator = validatorHolder.getValidatorForProfile(profile);
+        ValidationResult validationResult = validator.validateWithResult(validatorInputAsString);
+        return filterRules.filterMessages(profile, validationResult);
     }
+
+
 }

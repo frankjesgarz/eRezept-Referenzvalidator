@@ -9,6 +9,7 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,6 +32,16 @@ public class Validator {
         return handleValidationResults(result, logErrors);
     }
 
+    /**
+     * Validates the input string and returns the fhir hapi validation result without applying any kind of filtering
+     * @param input the input string to be validated
+     * @return the validation result
+     */
+    public ValidationResult validateWithResult(String input){
+        return fhirValidator.validateWithResult(input);
+    }
+
+
     public Map<ResultSeverityEnum, List<SingleValidationMessage>> validate(IBaseResource input) {
         ValidationResult result = fhirValidator.validateWithResult(input);
         return handleValidationResults(result, true);
@@ -39,7 +50,7 @@ public class Validator {
     private Map<ResultSeverityEnum, List<SingleValidationMessage>> handleValidationResults(
         ValidationResult result, boolean logErrors) {
 
-        List<SingleValidationMessage> messages = result.getMessages().stream().collect(Collectors.toList());
+        List<SingleValidationMessage> messages = new ArrayList<>(result.getMessages());
         WhiteListHelper.applyWhiteLists(messages);
 
         if(logErrors) {

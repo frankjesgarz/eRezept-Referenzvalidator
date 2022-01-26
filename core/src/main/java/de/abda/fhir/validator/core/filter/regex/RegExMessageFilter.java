@@ -3,9 +3,7 @@ package de.abda.fhir.validator.core.filter.regex;
 import java.io.InputStream;
 import java.io.Writer;
 import java.net.URL;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -16,6 +14,9 @@ import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
 
 import ca.uhn.fhir.validation.SingleValidationMessage;
+import de.abda.fhir.validator.core.FilteredValidationResult;
+import de.abda.fhir.validator.core.filter.FilterEvent;
+import de.abda.fhir.validator.core.filter.FilterResult;
 import de.abda.fhir.validator.core.filter.MessageFilter;
 
 /**
@@ -38,14 +39,15 @@ public class RegExMessageFilter implements MessageFilter {
     private static final String ERROR_WRITER_NULL = "Die übergebene Writer darf nicht NULL sein.";
     private static final String ERROR_CANT_WRITE_FILE = "Fehler beim Schreiben der FilterBeschreibungsListe.";
 
-    private final List<FilterDefinition> filterDefinitionListe;
+    private final List<FilterDefinition> filterDefinitions;
+    private URL url;
 
 
     /**
      * Default Konstruktor
      */
     public RegExMessageFilter() throws RuntimeException {
-        this.filterDefinitionListe = Collections.emptyList();
+        this.filterDefinitions = Collections.emptyList();
     }
 
     /**
@@ -56,6 +58,7 @@ public class RegExMessageFilter implements MessageFilter {
      * @throws RuntimeException         in case of an expception while reading the file
      */
     public RegExMessageFilter(URL url) throws IllegalArgumentException, RuntimeException {
+        this.url = url;
         if (null == url) {
             throw new IllegalArgumentException(ERROR_URL_NULL);
         }
@@ -69,11 +72,10 @@ public class RegExMessageFilter implements MessageFilter {
                         .unmarshal(new StreamSource(is), FilterDefinitionList.class).getValue();
 
 				if ( null == result.getFilterDefinitionList()) {
-					this.filterDefinitionListe = Collections.emptyList();
+					this.filterDefinitions = Collections.emptyList();
 				} else {
-					this.filterDefinitionListe = Collections.unmodifiableList(result.getFilterDefinitionList());
+					this.filterDefinitions = Collections.unmodifiableList(result.getFilterDefinitionList());
 				}
-
             } catch (Exception e) {
                 throw new RuntimeException(String.format(ERROR_CANT_READ_FILE, url), e);
             }
@@ -87,23 +89,26 @@ public class RegExMessageFilter implements MessageFilter {
      * {@inheritDoc}
      */
     @Override
-    public void filter(List<SingleValidationMessage> messages) throws IllegalArgumentException {
+    public FilteredValidationResult filter(List<SingleValidationMessage> messages) throws IllegalArgumentException {
         if (null == messages) {
             throw new IllegalArgumentException(ERROR_MESSAGES_NULL);
         }
-
-        for (FilterDefinition fb : this.filterDefinitionListe) {
-            final Iterator<SingleValidationMessage> iterator = messages.iterator();
-            while (iterator.hasNext()) {
-                SingleValidationMessage next = iterator.next();
-                if (doFilter(fb, next)) {
-                    iterator.remove();
+        List<FilterEvent> filterEvents = new ArrayList<>();
+        FilterResult filterResult = new FilterResult(this, filterEvents);
+        for (FilterDefinition filterDefinition : this.filterDefinitions) {
+            final Iterator<SingleValidationMessage> messageIterator = messages.iterator();
+            while (messageIterator.hasNext()) {
+                SingleValidationMessage next = messageIterator.next();
+                if (doFilter(filterDefinition, next)) {
+                    filterEvents.add(new FilterEvent(filterDefinition, next));
+                    messageIterator.remove();
                     if (LOGGER.isLoggable(Level.FINE)) {
                         LOGGER.fine(String.format(DEBUG_MESSAGE_FILTERED, next));
                     }
                 }
             }
         }
+        return new FilteredValidationResult(messages,filterResult);
     }
 
     /**
@@ -132,8 +137,8 @@ public class RegExMessageFilter implements MessageFilter {
      *
      * @return the list. Is never <code>null</code>.
      */
-    public List<FilterDefinition> getFilterDefinitionListe() {
-        return this.filterDefinitionListe;
+    public List<FilterDefinition> getFilterDefinitions() {
+        return this.filterDefinitions;
     }
 
     /**
@@ -154,7 +159,7 @@ public class RegExMessageFilter implements MessageFilter {
             jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 
             FilterDefinitionList filterList = new FilterDefinitionList();
-            filterList.setFilterDefinitionList(filterDefinitionListe);
+            filterList.setFilterDefinitionList(filterDefinitions);
 
             jaxbMarshaller.marshal(filterList, writer);
 
@@ -163,4 +168,7 @@ public class RegExMessageFilter implements MessageFilter {
         }
     }
 
+    public URL getUrl() {
+        return url;
+    }
 }
