@@ -4,7 +4,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.filter.*;
-import de.abda.fhir.validator.core.filter.regex.FilterBeschreibungsListe;
+import de.abda.fhir.validator.core.filter.regex.FilterDefinitionList;
 import de.abda.fhir.validator.core.filter.regex.RegExMessageFilter;
 import de.abda.fhir.validator.core.util.FileHelper;
 import de.abda.fhir.validator.core.util.Profile;
@@ -61,7 +61,7 @@ public class ReferenceValidator {
     }
 
     /**
-     * Loads a properties file which defines which {@link  FilterBeschreibungsListe} is to be used for each FHIR profile.
+     * Loads a properties file which defines which {@link  FilterDefinitionList} is to be used for each FHIR profile.
      * The key of each property is the profile including the profile version (if present). The value is the path
      * to the XMl file containing the filter rules.
      */

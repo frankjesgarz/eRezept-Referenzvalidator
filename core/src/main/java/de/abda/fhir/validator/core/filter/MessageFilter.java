@@ -5,21 +5,19 @@ import java.util.List;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 
 /**
- * Schnittstellenbeschreibung für einen Filter zur Entfernung von unerwünschten Meldungen.
- * 
+ * Removes undesired validation messages from a List
+ *
  * @author Dzmitry Liashenka
  * @author Georg Tsakumagos
  */
 public interface MessageFilter {
 
-	/**
-	 * Filtert die übergebene Liste und entfernt alle
-	 * Messages, die der Filterbedingung entsprechen.
-	 * 
-	 * @param messages Die zu filternde Liste. Darf nicht <code>null</code> sein.
-	 * 
-	 * @throws IllegalArgumentException Wenn die übergeben Liste ungültig ist.
-	 */
-	public void filter(List<SingleValidationMessage> messages) throws IllegalArgumentException;
-	
+    /**
+     * filters the passed in List and removes SingleValidationMessages regarding the defined filterCriteria
+     *
+     * @param messages The List of messages to be filtered. Must not be <code>null</code>.
+     * @throws IllegalArgumentException if messages is invalid
+     */
+    void filter(List<SingleValidationMessage> messages) throws IllegalArgumentException;
+
 }
