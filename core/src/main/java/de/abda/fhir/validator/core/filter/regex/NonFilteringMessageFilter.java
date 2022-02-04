@@ -4,6 +4,8 @@ import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.FilteredValidationResult;
 import de.abda.fhir.validator.core.filter.FilterResult;
 import de.abda.fhir.validator.core.filter.MessageFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.List;
  */
 public class NonFilteringMessageFilter implements MessageFilter {
     private final FilterResult filterResult = new FilterResult(this, Collections.emptyList());
+    private static final Logger logger = LoggerFactory.getLogger(NonFilteringMessageFilter.class);
+
 
     /**
      *

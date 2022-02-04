@@ -14,18 +14,23 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.*;
 
-public class FilterRules {
-    private static final String MESSAGE_NO_FILTER_DEFINED = "Es wurde keine Filter für das Profil {} definiert.";
+/**
+ * Custom Filter engine which loads all filter rules from xml files, for each profile specified by {@link CustomFilterEngine#VALIDATION_FILTER_PROPERTIES}.
+ * Provides a version specific {@link MessageFilter} for each profile.
+ * @author Frank Jesgarz
+ */
+public class CustomFilterEngine {
+    private static final String MESSAGE_NO_FILTER_DEFINED = "Es wurde keine Filter für das Profil {} definiert. Die Messages für dieses Profil werden nicht gefiltert.";
     public static final String VALIDATION_FILTER_PROPERTIES = "/de/abda/fhir/validator/core/filter/regex/validationFilter.properties";
     private static final String ERROR_CANT_READ_PROPERTIES = "Fehler beim Einlesen der Properties aus der Quelle:{}).";
-    private static final Logger logger = LoggerFactory.getLogger(FilterRules.class);
+    private static final Logger logger = LoggerFactory.getLogger(CustomFilterEngine.class);
     private Properties profileFilters;
     private final Map<Profile, MessageFilter> messageFilters = new HashMap<>();
 
     /**
      * Constructor
      */
-    public FilterRules() {
+    public CustomFilterEngine() {
         loadValidationFilterProperties();
     }
 
@@ -48,7 +53,8 @@ public class FilterRules {
     /**
      * Filters out the validation messages of the validationResult according to the defined filter rules
      * and returns a {@link FilteredValidationResult}, that contains the remaining validation messages as well as a {@link FilterResult},
-     * which provides further information for the filtered out messages
+     * which provides further information for the filtered out messages. If no {@link MessageFilter} was defined for the
+     * given profile, the {@link NonFilteringMessageFilter} is used, which does not apply any filering.
      * @param profile the profile according to which the imput resource was filtered
      * @param validationResult the validation result
      * @return the result of the filtering operations
@@ -77,7 +83,7 @@ public class FilterRules {
                 URL url = this.getClass().getResource(filterXML);
                 filter = new RegExMessageFilter(url);
             } else {
-                logger.info(MESSAGE_NO_FILTER_DEFINED, profile.getCanonical());
+                logger.warn(MESSAGE_NO_FILTER_DEFINED, profile.getCanonical());
                 filter = new NonFilteringMessageFilter();
             }
             messageFilters.put(profile, filter);
