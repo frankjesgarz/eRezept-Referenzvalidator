@@ -117,10 +117,9 @@ class ReferenceValidatorFilterITTest {
     }
 
     /**
-     * Test zum identifizieren von Info-Messages bei invaliden Dateien. Hypothese: Infomeldungen sollten nicht kritisch sein
-     * und ggf in die Whitelist aufgenommen werden
+     * Test case to identify results, which only contain info messages.
      *
-     * @param path Pfad zur Tetsdatei
+     * @param path Path to test file
      */
     @ParameterizedTest
     @MethodSource(value = "validateInvalidFiles")
@@ -128,11 +127,15 @@ class ReferenceValidatorFilterITTest {
         FilteredValidationResult filteredValidationResult = validator
                 .validateFileWithFilters(path);
         List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.INFORMATION));
-        messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+
+        //Only log messages if the result contains only info messages
+        if(filteredValidationResult.getValidationMessages().size() == messages.size()){
+            messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+        }
     }
 
     /**
-     * Test zum identifizieren von Warn-Messages bei invaliden Dateien.
+     * Test case to identify results, which contain at least one warning and only contain messages <= ResultSeverityEnum.WARNING
      *
      * @param path Pfad zur Testdatei
      */
@@ -142,8 +145,10 @@ class ReferenceValidatorFilterITTest {
         logger.info("Testdatei:{}", path);
         FilteredValidationResult filteredValidationResult = validator
                 .validateFileWithFilters(path);
-        List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.WARNING));
-        messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+        List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.WARNING, ResultSeverityEnum.INFORMATION));
+        if(filteredValidationResult.getValidationMessages().size() == messages.size()){
+            messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+        }
     }
 
     private static Stream<Path> validateInvalidFiles() throws IOException {
