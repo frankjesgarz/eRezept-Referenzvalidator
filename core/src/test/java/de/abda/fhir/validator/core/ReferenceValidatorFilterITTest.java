@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.Format;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -94,28 +95,23 @@ class ReferenceValidatorFilterITTest {
                 .validateFileX(path);
         if (!filteredValidationResult.isValid()) {
             logger.warn("Es sollten keine Validierungsmeldungen gefunden werden, es wurden aber {} zurückgegeben.", filteredValidationResult.getValidationMessages().size());
-            filteredValidationResult.getValidationMessages().forEach(msg -> logger.warn(msg.toString()));
+            if(filteredValidationResult.getValidationMessages().size() > 0){
+                logger.warn(filteredValidationResult.getValidationMessages().stream().map(SingleValidationMessage::toString).collect(Collectors.joining(",")));
+            }
         }
         results.add(filteredValidationResult);
         assertTrue(filteredValidationResult.isValid());
-        marshall(filteredValidationResult);
+       // marshall(filteredValidationResult);
     }
 
     private void marshall(FilteredValidationResult filteredValidationResult){
         try {
             JAXBContext jaxbContext = JAXBContext.newInstance(FilteredValidationResult.class, RegExMessageFilter.class, NonFilteringMessageFilter.class);
-
-
             Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
-
-            // output pretty printed
             jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-
             StringWriter sw = new StringWriter();
             jaxbMarshaller.marshal(filteredValidationResult, sw);
             logger.warn(sw.toString());
-
-
         } catch (JAXBException e) {
             e.printStackTrace();
         }
@@ -156,9 +152,19 @@ class ReferenceValidatorFilterITTest {
 
         //Only log messages if the result contains only info messages
         if(filteredValidationResult.getValidationMessages().size() == messages.size()){
-            messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+            logMessages(path, messages);
+        };
+
         }
+
+    private void logMessages(Path path, List<SingleValidationMessage> messages) {
+        String msgTemplate = "Meldung:'%s', Path:'%s', severity:%s, Zeile:%d, Spalte:%d";
+        Stream<String> stream = messages.stream().map(m -> String.format(msgTemplate, m.getMessage(), m.getLocationString(), m.getSeverity(), m.getLocationLine(), m.getLocationCol()));
+        String formattedMessages = stream.collect(Collectors.joining(", "));
+        logger.warn("Datei:{}, Meldungen:[{}]" +  path, formattedMessages);
     }
+
+
 
     /**
      * Test case to identify results, which contain at least one warning and only contain messages <= ResultSeverityEnum.WARNING
@@ -173,7 +179,7 @@ class ReferenceValidatorFilterITTest {
                 .validateFileX(path);
         List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.WARNING, ResultSeverityEnum.INFORMATION));
         if(filteredValidationResult.getValidationMessages().size() == messages.size()){
-            messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+            logMessages(path, messages);
             fail();
         }
     }

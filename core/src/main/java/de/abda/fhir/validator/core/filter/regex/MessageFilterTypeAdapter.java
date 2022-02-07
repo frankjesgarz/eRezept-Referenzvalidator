@@ -1,8 +1,6 @@
 package de.abda.fhir.validator.core.filter.regex;
 
 import de.abda.fhir.validator.core.filter.MessageFilter;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 /**
@@ -15,7 +13,7 @@ public class MessageFilterTypeAdapter extends XmlAdapter<String, MessageFilter> 
      */
     @Override
     public MessageFilter unmarshal(String value) {
-        throw new NotImplementedException();
+        throw new IllegalStateException("nicht implementiert");
     }
 
     /**
