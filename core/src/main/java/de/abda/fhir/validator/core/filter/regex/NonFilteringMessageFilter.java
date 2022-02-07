@@ -2,10 +2,7 @@ package de.abda.fhir.validator.core.filter.regex;
 
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.FilteredValidationResult;
-import de.abda.fhir.validator.core.filter.FilterResult;
 import de.abda.fhir.validator.core.filter.MessageFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -14,8 +11,6 @@ import java.util.List;
  * This implementation simply returns a {@link FilteredValidationResult} without applying any filtering
  */
 public class NonFilteringMessageFilter implements MessageFilter {
-    private final FilterResult filterResult = new FilterResult(this, Collections.emptyList());
-    private static final Logger logger = LoggerFactory.getLogger(NonFilteringMessageFilter.class);
 
 
     /**
@@ -25,6 +20,11 @@ public class NonFilteringMessageFilter implements MessageFilter {
      */
     @Override
     public FilteredValidationResult filter(List<SingleValidationMessage> messages)  {
-        return new FilteredValidationResult(messages, filterResult);
+        return new FilteredValidationResult(messages, this, Collections.emptyList());
+    }
+
+    @Override
+    public String toString() {
+        return "NonFilteringMessageFilter{}";
     }
 }

@@ -4,7 +4,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import ca.uhn.fhir.validation.ValidationResult;
-import de.abda.fhir.validator.core.filter.CustomFilterEngine;
+import de.abda.fhir.validator.core.filter.FilterEngine;
 import de.abda.fhir.validator.core.util.FileHelper;
 import de.abda.fhir.validator.core.util.Profile;
 import de.abda.fhir.validator.core.util.ProfileHelper;
@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This is the default class to use the ABDA FHIR validator in your Java Application.
@@ -29,10 +30,10 @@ import java.util.Map;
  * further FHIR resources in the same or another thread.</p>
  */
 public class ReferenceValidator {
-    static Logger logger = LoggerFactory.getLogger(Validator.class);
+    static final Logger logger = LoggerFactory.getLogger(Validator.class);
     private final FhirContext ctx;
     private final ValidatorHolder validatorHolder;
-    private final CustomFilterEngine customFilterEngine;
+    private final FilterEngine filterEngine;
 
 
     /**
@@ -50,7 +51,7 @@ public class ReferenceValidator {
     public ReferenceValidator(FhirContext ctx) {
         this.ctx = ctx;
         validatorHolder = new ValidatorHolder(this.ctx);
-        customFilterEngine = new CustomFilterEngine();
+        filterEngine = new FilterEngine();
     }
 
 
@@ -64,7 +65,9 @@ public class ReferenceValidator {
     public Map<ResultSeverityEnum, List<SingleValidationMessage>> validateFile(String inputFile) {
         logger.debug("Start validating File {}", inputFile);
         String validatorInputAsString = FileHelper.loadValidatorInputAsString(inputFile, false);
-        return this.validateImpl(validatorInputAsString);
+        FilteredValidationResult filteredValidationResult = validateStringX(validatorInputAsString);
+        return filteredValidationResult.getValidationMessages().stream().collect(
+                Collectors.groupingBy(SingleValidationMessage::getSeverity, Collectors.toList()));
     }
 
     /**
@@ -78,15 +81,16 @@ public class ReferenceValidator {
     }
 
     /**
-     * Validates the given String containing a FHIR resouce
+     * Validates the given String containing a FHIR resources
      *
      * @param validatorInputAsString String, not null or empty
      * @return Map of {@link ResultSeverityEnum} as key and a List of {@link SingleValidationMessage} as key
      */
     public Map<ResultSeverityEnum, List<SingleValidationMessage>> validateString(String validatorInputAsString) {
         logger.debug("Start validating String input");
-        return validateImpl(validatorInputAsString);
-    }
+        FilteredValidationResult filteredValidationResult = validateStringX(validatorInputAsString);
+        return filteredValidationResult.getValidationMessages().stream().collect(
+                Collectors.groupingBy(SingleValidationMessage::getSeverity, Collectors.toList()));    }
 
     /**
      * The first validation in a new validator is very slow. So this method creates validators
@@ -100,34 +104,42 @@ public class ReferenceValidator {
         validatorHolder.preloadAllSupportedValidators(profileToPreload);
     }
 
-    private Map<ResultSeverityEnum, List<SingleValidationMessage>> validateImpl(String validatorInputAsString) {
-        InputStream validatorInputStream = new ByteArrayInputStream(validatorInputAsString.getBytes(StandardCharsets.UTF_8));
-        Profile profile = ProfileHelper.getProfileFromXmlStream(validatorInputStream);
-        Validator validator = validatorHolder.getValidatorForProfile(profile);
-        return validator.validate(validatorInputAsString);
-    }
+
 
     /**
-     * Validates the passed in file and filters out encountered ValidationMessages according to the {@link CustomFilterEngine} defined for this project
+     * Validates the passed in file and filters out encountered ValidationMessages according to the {@link FilterEngine} defined for this project
      * @param path file to be validated
      * @return the filtered result
      */
-    public FilteredValidationResult validateFileWithFilters(Path path) {
+    public FilteredValidationResult validateFileX(Path path) {
         String validatorInputAsString = FileHelper.loadValidatorInputAsString(path.toString(), false);
-        return validateStringWithFilters(validatorInputAsString);
+        return validateStringX(validatorInputAsString);
     }
 
     /**
-     * Validates the passed in string and filters out encountered ValidationMessages according to the {@link CustomFilterEngine} defined for this project
+     * Validates the passed in string and filters out encountered ValidationMessages according to the {@link FilterEngine} defined for this project
      * @param validatorInputAsString string to be validated
      * @return the filtered result
      */
-    public FilteredValidationResult validateStringWithFilters(String validatorInputAsString) {
+    /*
+     */
+    public FilteredValidationResult validateStringX(String validatorInputAsString) {
         InputStream validatorInputStream = new ByteArrayInputStream(validatorInputAsString.getBytes(StandardCharsets.UTF_8));
         Profile profile = ProfileHelper.getProfileFromXmlStream(validatorInputStream);
+        return validateStringX(validatorInputAsString, profile);
+    }
+
+
+    /**
+     * Validates the passed in string and filters out encountered ValidationMessages according to the {@link FilterEngine} defined for this project
+     * @param validatorInputAsString string to be validated
+     * @param profile Profile to be used for validation
+     * @return the validation result
+     */
+    public FilteredValidationResult validateStringX(String validatorInputAsString, Profile profile) {
         Validator validator = validatorHolder.getValidatorForProfile(profile);
         ValidationResult validationResult = validator.validateWithResult(validatorInputAsString);
-        return customFilterEngine.filterMessages(profile, validationResult);
+        return filterEngine.filterMessages(profile, validationResult);
     }
 
 

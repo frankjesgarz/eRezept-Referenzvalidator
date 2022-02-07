@@ -3,28 +3,38 @@ package de.abda.fhir.validator.core.filter;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.filter.regex.FilterDefinition;
 
+import javax.xml.bind.annotation.*;
+
 /**
  * Holds a message that was filtered out and the filter definition that was used for filtering
  * @author Frank Jesgarz
  */
+@XmlRootElement()
+@XmlAccessorType(XmlAccessType.PROPERTY)
+@XmlType(propOrder = {"filterDefinition", "singleValidationMessage"})
 public class FilterEvent {
-    private final FilterDefinition filterDefinition;
-    private final SingleValidationMessage message;
+    private FilterDefinition filterDefinition;
+    private SingleValidationMessage singleValidationMessage;
 
-    /**
-     * Constructor
-     * @param filterDefinition the filterDefinition that was responisble for filtering out the message
-     * @param message the message that was filtered
-     */
-    public FilterEvent(FilterDefinition filterDefinition, SingleValidationMessage message) {
-        this.filterDefinition = filterDefinition;
-        this.message = message;
+    @SuppressWarnings("unused")
+    public FilterEvent(){
+        //for jaxb
     }
 
     /**
-     *
-     * @return the filterDefinition that was responisble for filtering out the message
+     * Constructor
+     * @param filterDefinition the filterDefinition that was responsible for filtering out the singleValidationMessage
+     * @param singleValidationMessage the singleValidationMessage that was filtered
      */
+    public FilterEvent(FilterDefinition filterDefinition, SingleValidationMessage singleValidationMessage) {
+        this.filterDefinition = filterDefinition;
+        this.singleValidationMessage = singleValidationMessage;
+    }
+
+    /**
+     * @return the filterDefinition that was responsible for filtering out the message
+     */
+    @XmlElement()
     public FilterDefinition getFilterDefinition() {
         return filterDefinition;
     }
@@ -33,7 +43,8 @@ public class FilterEvent {
      *
      * @return the message that was filtered
      */
-    public SingleValidationMessage getFilteredMessage() {
-        return message;
+    @XmlElement()
+    public SingleValidationMessage getSingleValidationMessage() {
+        return singleValidationMessage;
     }
 }

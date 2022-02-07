@@ -15,22 +15,22 @@ import java.net.URL;
 import java.util.*;
 
 /**
- * Custom Filter engine which loads all filter rules from xml files, for each profile specified by {@link CustomFilterEngine#VALIDATION_FILTER_PROPERTIES}.
+ * Custom Filter engine which loads all filter rules from xml files, for each profile specified by {@link FilterEngine#VALIDATION_FILTER_PROPERTIES}.
  * Provides a version specific {@link MessageFilter} for each profile.
  * @author Frank Jesgarz
  */
-public class CustomFilterEngine {
+public class FilterEngine {
     private static final String MESSAGE_NO_FILTER_DEFINED = "Es wurde keine Filter für das Profil {} definiert. Die Messages für dieses Profil werden nicht gefiltert.";
     public static final String VALIDATION_FILTER_PROPERTIES = "/de/abda/fhir/validator/core/filter/regex/validationFilter.properties";
     private static final String ERROR_CANT_READ_PROPERTIES = "Fehler beim Einlesen der Properties aus der Quelle:{}).";
-    private static final Logger logger = LoggerFactory.getLogger(CustomFilterEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(FilterEngine.class);
     private Properties profileFilters;
     private final Map<Profile, MessageFilter> messageFilters = new HashMap<>();
 
     /**
      * Constructor
      */
-    public CustomFilterEngine() {
+    public FilterEngine() {
         loadValidationFilterProperties();
     }
 
@@ -41,6 +41,7 @@ public class CustomFilterEngine {
      * to the XMl file containing the filter rules.
      */
     private void loadValidationFilterProperties() {
+      //  ResourceBundle rb = ResourceBundle.getBundle("myResource", Locale.getDefault(), loader);
         profileFilters = new Properties();
         URL propertiesUrl = Objects.requireNonNull(this.getClass().getResource(VALIDATION_FILTER_PROPERTIES));
         try (InputStream is = propertiesUrl.openStream()) {
@@ -52,10 +53,10 @@ public class CustomFilterEngine {
 
     /**
      * Filters out the validation messages of the validationResult according to the defined filter rules
-     * and returns a {@link FilteredValidationResult}, that contains the remaining validation messages as well as a {@link FilterResult},
-     * which provides further information for the filtered out messages. If no {@link MessageFilter} was defined for the
-     * given profile, the {@link NonFilteringMessageFilter} is used, which does not apply any filering.
-     * @param profile the profile according to which the imput resource was filtered
+     * and returns a {@link FilteredValidationResult}, that contains the remaining validation messages as well as a List
+     * of {@link FilterEvent}, containing an entry for each message that has been filtered. If no {@link MessageFilter} was defined for the
+     * given profile, the {@link NonFilteringMessageFilter} is used, which does not apply any filtering.
+     * @param profile the profile according to which the input resource was filtered
      * @param validationResult the validation result
      * @return the result of the filtering operations
      */

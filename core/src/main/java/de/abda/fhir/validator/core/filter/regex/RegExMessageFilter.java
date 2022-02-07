@@ -1,23 +1,29 @@
 package de.abda.fhir.validator.core.filter.regex;
 
-import java.io.InputStream;
-import java.io.Writer;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
+import javax.xml.bind.SchemaOutputResolver;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.Result;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
 
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.FilteredValidationResult;
 import de.abda.fhir.validator.core.filter.FilterEvent;
-import de.abda.fhir.validator.core.filter.FilterResult;
 import de.abda.fhir.validator.core.filter.MessageFilter;
+import org.apache.commons.io.FilenameUtils;
+import org.xml.sax.SAXException;
 
 /**
  * Default implementation of {@link MessageFilter}.
@@ -66,11 +72,11 @@ public class RegExMessageFilter implements MessageFilter {
         try {
             JAXBContext jaxbContext = JAXBContext.newInstance(FilterDefinitionList.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            jaxbUnmarshaller.setSchema(generateSchema(jaxbContext));
 
             try (InputStream is = url.openStream()) {
                 FilterDefinitionList result = jaxbUnmarshaller
                         .unmarshal(new StreamSource(is), FilterDefinitionList.class).getValue();
-
 				if ( null == result.getFilterDefinitionList()) {
 					this.filterDefinitions = Collections.emptyList();
 				} else {
@@ -86,6 +92,34 @@ public class RegExMessageFilter implements MessageFilter {
     }
 
     /**
+     * generates Schema for the validation of input files from class file annotations
+     * @param jaxbContext the jaxb context the schema is supposed to be gebneraded for
+     * @return the schema
+     */
+   private Schema generateSchema(JAXBContext jaxbContext) throws IOException, SAXException {
+        final List<ByteArrayOutputStream> outs = new ArrayList<>();
+        jaxbContext.generateSchema(new SchemaOutputResolver(){
+            @Override
+            public Result createOutput(String namespaceUri, String suggestedFileName){
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                outs.add(out);
+                StreamResult streamResult = new StreamResult(out);
+                streamResult.setSystemId("");
+                return streamResult;
+            }});
+        StreamSource[] sources = new StreamSource[outs.size()];
+        for (int i=0; i<outs.size(); i++) {
+            ByteArrayOutputStream out = outs.get(i);
+            sources[i] = new StreamSource(new ByteArrayInputStream(out.toByteArray()),"");
+        }
+        SchemaFactory sf = SchemaFactory.newInstance( XMLConstants.W3C_XML_SCHEMA_NS_URI );
+        return sf.newSchema(sources);
+
+    }
+
+
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -94,7 +128,6 @@ public class RegExMessageFilter implements MessageFilter {
             throw new IllegalArgumentException(ERROR_MESSAGES_NULL);
         }
         List<FilterEvent> filterEvents = new ArrayList<>();
-        FilterResult filterResult = new FilterResult(this, filterEvents);
         for (FilterDefinition filterDefinition : this.filterDefinitions) {
             final Iterator<SingleValidationMessage> messageIterator = messages.iterator();
             while (messageIterator.hasNext()) {
@@ -108,7 +141,7 @@ public class RegExMessageFilter implements MessageFilter {
                 }
             }
         }
-        return new FilteredValidationResult(messages,filterResult);
+        return new FilteredValidationResult(messages,this, filterEvents);
     }
 
     /**
@@ -170,5 +203,13 @@ public class RegExMessageFilter implements MessageFilter {
 
     public URL getUrl() {
         return url;
+    }
+
+    @Override
+    public String toString() {
+       String fileName =  FilenameUtils.getName(url.getPath());
+        return "RegExMessageFilter{" +
+                "source=" + fileName +
+                '}';
     }
 }

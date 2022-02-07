@@ -1,25 +1,39 @@
 package de.abda.fhir.validator.core;
 
 import ca.uhn.fhir.validation.SingleValidationMessage;
-import de.abda.fhir.validator.core.filter.FilterResult;
+import de.abda.fhir.validator.core.filter.FilterEvent;
+import de.abda.fhir.validator.core.filter.MessageFilter;
+import de.abda.fhir.validator.core.filter.regex.MessageFilterTypeAdapter;
 
+import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import java.util.List;
 
 /**
  * Container object, which contains the list of ValidationMessages that remain after applying the custom filter rules
- * as well as a {@link FilterResult} which may hold a list of messages that have been filtered out
+ * as well as a List of {@link de.abda.fhir.validator.core.filter.FilterEvent} which may hold a list of messages that have been filtered out
  */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.PROPERTY)
+@XmlType(propOrder = {"valid", "validationMessages", "messageFilter", "filterEvents"})
 public class FilteredValidationResult {
-    private final FilterResult filterResult;
-    private final List<SingleValidationMessage> validationMessages;
+    private List<SingleValidationMessage> validationMessages;
+    private MessageFilter messageFilter;
+    private List<FilterEvent> filterEvents;
+    private boolean valid;
 
-    public FilteredValidationResult(List<SingleValidationMessage> validationMessages, FilterResult filterResult) {
-        this.validationMessages = validationMessages;
-        this.filterResult = filterResult;
+    public FilteredValidationResult() {
     }
 
+    public FilteredValidationResult(List<SingleValidationMessage> validationMessages, MessageFilter messageFilter, List<FilterEvent> filterEvents) {
+        this.validationMessages = validationMessages;
+        this.messageFilter = messageFilter;
+        this.filterEvents = filterEvents;
+        this.valid = validationMessages.size() == 0;
+    }
+    @XmlElement
     public boolean isValid() {
-        return validationMessages.size() == 0;
+        return this.valid;
     }
 
     /**
@@ -27,11 +41,27 @@ public class FilteredValidationResult {
      *
      * @return List of messages which have not been matched by a filter
      */
+    @XmlElementWrapper
     public List<SingleValidationMessage> getValidationMessages() {
         return validationMessages;
     }
 
-    public FilterResult getFilterResult() {
-        return filterResult;
+    /**
+     *
+     * @return the message filter that was responsible for the filter events
+     */
+    @XmlElement
+    @XmlJavaTypeAdapter(MessageFilterTypeAdapter.class)
+    public MessageFilter getMessageFilter() {
+        return messageFilter;
+    }
+
+    /**
+     *
+     * @return List of filter events that were produced during filtering
+     */
+    @XmlElementWrapper
+    public List<FilterEvent> getFilterEvents() {
+        return filterEvents;
     }
 }

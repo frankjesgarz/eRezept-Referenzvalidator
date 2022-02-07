@@ -3,9 +3,9 @@ package de.abda.fhir.validator.core;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
 import de.abda.fhir.validator.core.filter.FilterEvent;
-import de.abda.fhir.validator.core.filter.FilterResult;
 import de.abda.fhir.validator.core.filter.MessageFilter;
 import de.abda.fhir.validator.core.filter.regex.FilterDefinition;
+import de.abda.fhir.validator.core.filter.regex.NonFilteringMessageFilter;
 import de.abda.fhir.validator.core.filter.regex.RegExMessageFilter;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,7 +13,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,14 +25,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.commons.lang3.tuple.Pair.of;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integrationtest  for the {@link ReferenceValidator}.
- * This tests verifies, that the method {@link ReferenceValidator#validateFileWithFilters(Path)} makes use of the
+ * This tests verifies, that the method {@link ReferenceValidator#validateFileX(Path)} makes use of the
  * RegexImplementation of {@link MessageFilter} and verifies that the FilterDefinitions declared by the xml files in the
- * resources directory lead to the expected results.
+ * resources' directory lead to the expected results.
  * @see RegExMessageFilter
  * @see FilterDefinition
  *
@@ -41,7 +44,7 @@ class ReferenceValidatorFilterITTest {
 
     private static ReferenceValidator validator;
     private static final Logger logger = LoggerFactory.getLogger(ReferenceValidatorFilterITTest.class);
-    private static final List<FilterResult> results = new ArrayList<>();
+    private static final List<FilteredValidationResult> results = new ArrayList<>();
 
     @BeforeAll
     static void setupClass() {
@@ -60,8 +63,8 @@ class ReferenceValidatorFilterITTest {
      */
     private static void assertAllDefinedFiltersMatched() {
         //get filter results grouped by MessageFilters
-        Map<MessageFilter, List<FilterResult>> messageFilterMap = results.stream().collect(Collectors.groupingBy(FilterResult::getMessageFilter));
-        for (Map.Entry<MessageFilter, List<FilterResult>> entry : messageFilterMap.entrySet()) {
+        Map<MessageFilter, List<FilteredValidationResult>> messageFilterMap = results.stream().collect(Collectors.groupingBy(FilteredValidationResult::getMessageFilter));
+        for (Map.Entry<MessageFilter, List<FilteredValidationResult>> entry : messageFilterMap.entrySet()) {
             //get stream of all encountered filter events
             Stream<FilterEvent> filterEventStream = entry.getValue().stream().flatMap(filterResult -> filterResult.getFilterEvents().stream());
             //get set of all filter definitions that were matched
@@ -88,14 +91,37 @@ class ReferenceValidatorFilterITTest {
     @MethodSource
     void validateValidFile(Path path) {
         FilteredValidationResult filteredValidationResult = validator
-                .validateFileWithFilters(path);
+                .validateFileX(path);
         if (!filteredValidationResult.isValid()) {
             logger.warn("Es sollten keine Validierungsmeldungen gefunden werden, es wurden aber {} zurückgegeben.", filteredValidationResult.getValidationMessages().size());
             filteredValidationResult.getValidationMessages().forEach(msg -> logger.warn(msg.toString()));
         }
-        results.add(filteredValidationResult.getFilterResult());
+        results.add(filteredValidationResult);
         assertTrue(filteredValidationResult.isValid());
+        marshall(filteredValidationResult);
     }
+
+    private void marshall(FilteredValidationResult filteredValidationResult){
+        try {
+            JAXBContext jaxbContext = JAXBContext.newInstance(FilteredValidationResult.class, RegExMessageFilter.class, NonFilteringMessageFilter.class);
+
+
+            Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
+
+            // output pretty printed
+            jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+
+            StringWriter sw = new StringWriter();
+            jaxbMarshaller.marshal(filteredValidationResult, sw);
+            logger.warn(sw.toString());
+
+
+        } catch (JAXBException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     private static Stream<Path> validateValidFile() throws IOException {
         return Files.walk(VALID_BASE_DIR).filter(path -> path.toString().endsWith(".xml"));
@@ -103,7 +129,7 @@ class ReferenceValidatorFilterITTest {
 
 
     /**
-     * Verifies that the {@link ReferenceValidator#validateFileWithFilters(Path)} returns at least one {@link SingleValidationMessage} for each file
+     * Verifies that the {@link ReferenceValidator#validateFileX(Path)} returns at least one {@link SingleValidationMessage} for each file
      * expected to be invalid.
      *
      * @param path the file to be validated
@@ -111,7 +137,7 @@ class ReferenceValidatorFilterITTest {
     @ParameterizedTest
     @MethodSource
     void validateInvalidFiles(Path path) {
-        FilteredValidationResult filteredValidationResult = validator.validateFileWithFilters(path);
+        FilteredValidationResult filteredValidationResult = validator.validateFileX(path);
         assertFalse(filteredValidationResult.isValid());
         assertTrue(filteredValidationResult.getValidationMessages().size() > 0);
     }
@@ -125,7 +151,7 @@ class ReferenceValidatorFilterITTest {
     @MethodSource(value = "validateInvalidFiles")
     void getInfoMessagesForInvalidFiles(Path path) {
         FilteredValidationResult filteredValidationResult = validator
-                .validateFileWithFilters(path);
+                .validateFileX(path);
         List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.INFORMATION));
 
         //Only log messages if the result contains only info messages
@@ -144,10 +170,11 @@ class ReferenceValidatorFilterITTest {
     void getWarningMessagesForInvalidFiles(Path path) {
         logger.info("Testdatei:{}", path);
         FilteredValidationResult filteredValidationResult = validator
-                .validateFileWithFilters(path);
+                .validateFileX(path);
         List<SingleValidationMessage> messages = getMessagesWithSeverity(filteredValidationResult, Arrays.asList(ResultSeverityEnum.WARNING, ResultSeverityEnum.INFORMATION));
         if(filteredValidationResult.getValidationMessages().size() == messages.size()){
             messages.forEach(msg -> logger.warn("Datei:{}, Meldung:'{}', path:'{}', severity:{}, Zeile:{}, Spalte:{}", path, msg.getMessage(), msg.getLocationString(), msg.getSeverity(), msg.getLocationLine(), msg.getLocationCol()));
+            fail();
         }
     }
 
