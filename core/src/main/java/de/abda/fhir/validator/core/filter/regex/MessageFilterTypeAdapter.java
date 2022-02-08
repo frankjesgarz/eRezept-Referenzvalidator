@@ -4,6 +4,8 @@ import de.abda.fhir.validator.core.filter.MessageFilter;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 /**
+ * This class is responsible for marshalling MessageFilter to Strings.
+ * The unmarshalling is currently not supported.
  * @author Frank Jesgarz
  */
 public class MessageFilterTypeAdapter extends XmlAdapter<String, MessageFilter> {
