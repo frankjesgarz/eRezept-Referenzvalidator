@@ -19,9 +19,10 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
 import ca.uhn.fhir.validation.SingleValidationMessage;
-import de.abda.fhir.validator.core.FilteredValidationResult;
+import de.abda.fhir.validator.core.ValidationResult;
 import de.abda.fhir.validator.core.filter.FilterEvent;
 import de.abda.fhir.validator.core.filter.MessageFilter;
+import de.abda.fhir.validator.core.util.Profile;
 import org.apache.commons.io.FilenameUtils;
 import org.xml.sax.SAXException;
 
@@ -38,14 +39,16 @@ public class RegExMessageFilter implements MessageFilter {
     private final static Logger LOGGER = Logger.getLogger(RegExMessageFilter.class.getName());
 
     private static final String ERROR_URL_NULL = "Die übergebene URL darf nicht NULL sein.";
+    private static final String ERROR_PROFILE_NULL = "Das übergebene Profil darf nicht NULL sein.";
+
     private static final String ERROR_MESSAGES_NULL = "Die übergebene Liste mit SingleValidationMessages darf nicht NULL sein.";
-    private static final String ERROR_CANT_READ_FILE = "Fehler beim Einlesen der FilterBeschreibungsListe aus der Quelle: '%01$s'.";
-    private static final String ERROR_CREATE_MARSHALLER_UNMARSHALLER = "Fehler beim Erstellen Unmarshaller.";
+    private static final String ERROR_UNMARSHALL_FILTER = "Fehler beim Einlesen der Filterdefinition %s.";
     private static final String DEBUG_MESSAGE_FILTERED = "'%01$s' message wird gefiltert.";
     private static final String ERROR_WRITER_NULL = "Die übergebene Writer darf nicht NULL sein.";
     private static final String ERROR_CANT_WRITE_FILE = "Fehler beim Schreiben der FilterBeschreibungsListe.";
 
     private final List<FilterDefinition> filterDefinitions;
+    private Profile profile;
     private URL url;
 
 
@@ -59,15 +62,15 @@ public class RegExMessageFilter implements MessageFilter {
     /**
      * Konstruktor
      *
-     * @param url path to an XML file with a {@link FilterDefinitionList}.
+     * @param url path to an XML file with a {@link FilterDefinitionList}. Must not be <code>NULL</code>
+     * @param profile the profile that is filtered by this Filter. Must not be <code>NULL</code>
      * @throws IllegalArgumentException is the parameter is <code>null</code>.
      * @throws RuntimeException         in case of an expception while reading the file
      */
-    public RegExMessageFilter(URL url) throws IllegalArgumentException, RuntimeException {
-        this.url = url;
-        if (null == url) {
-            throw new IllegalArgumentException(ERROR_URL_NULL);
-        }
+    public RegExMessageFilter(URL url, Profile profile) throws IllegalArgumentException, RuntimeException {
+
+        this.url = Objects.requireNonNull(url, ERROR_URL_NULL);
+        this.profile = Objects.requireNonNull(profile, ERROR_PROFILE_NULL);
 
         try {
             JAXBContext jaxbContext = JAXBContext.newInstance(FilterDefinitionList.class);
@@ -82,12 +85,9 @@ public class RegExMessageFilter implements MessageFilter {
 				} else {
 					this.filterDefinitions = Collections.unmodifiableList(result.getFilterDefinitionList());
 				}
-            } catch (Exception e) {
-                throw new RuntimeException(String.format(ERROR_CANT_READ_FILE, url), e);
             }
-
         } catch (final Throwable e) {
-            throw new RuntimeException(ERROR_CREATE_MARSHALLER_UNMARSHALLER, e);
+            throw new RuntimeException(String.format(ERROR_UNMARSHALL_FILTER, url), e);
         }
     }
 
@@ -123,7 +123,7 @@ public class RegExMessageFilter implements MessageFilter {
      * {@inheritDoc}
      */
     @Override
-    public FilteredValidationResult filter(List<SingleValidationMessage> messages) throws IllegalArgumentException {
+    public ValidationResult filter(List<SingleValidationMessage> messages) throws IllegalArgumentException {
         if (null == messages) {
             throw new IllegalArgumentException(ERROR_MESSAGES_NULL);
         }
@@ -141,7 +141,7 @@ public class RegExMessageFilter implements MessageFilter {
                 }
             }
         }
-        return new FilteredValidationResult(messages,this, filterEvents);
+        return new ValidationResult(messages,this, filterEvents, this.profile);
     }
 
     /**

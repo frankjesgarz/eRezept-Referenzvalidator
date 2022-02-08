@@ -1,7 +1,6 @@
 package de.abda.fhir.validator.core.filter;
 
-import ca.uhn.fhir.validation.ValidationResult;
-import de.abda.fhir.validator.core.FilteredValidationResult;
+import de.abda.fhir.validator.core.ValidationResult;
 import de.abda.fhir.validator.core.filter.regex.FilterDefinitionList;
 import de.abda.fhir.validator.core.filter.regex.NonFilteringMessageFilter;
 import de.abda.fhir.validator.core.filter.regex.RegExMessageFilter;
@@ -53,14 +52,14 @@ public class FilterEngine {
 
     /**
      * Filters out the validation messages of the validationResult according to the defined filter rules
-     * and returns a {@link FilteredValidationResult}, that contains the remaining validation messages as well as a List
+     * and returns a {@link ValidationResult}, that contains the remaining validation messages as well as a List
      * of {@link FilterEvent}, containing an entry for each message that has been filtered. If no {@link MessageFilter} was defined for the
      * given profile, the {@link NonFilteringMessageFilter} is used, which does not apply any filtering.
      * @param profile the profile according to which the input resource was filtered
      * @param validationResult the validation result
      * @return the result of the filtering operations
      */
-    public FilteredValidationResult filterMessages(Profile profile, ValidationResult validationResult) {
+    public ValidationResult filterMessages(Profile profile, ca.uhn.fhir.validation.ValidationResult validationResult) {
         MessageFilter messageFilter = loadFilterForProfile(profile);
         return messageFilter.filter(new ArrayList<>(validationResult.getMessages()));
     }
@@ -82,10 +81,10 @@ public class FilterEngine {
             String filterXML = profileFilters.getProperty(profileAndVersion);
             if (filterXML != null) {
                 URL url = this.getClass().getResource(filterXML);
-                filter = new RegExMessageFilter(url);
+                filter = new RegExMessageFilter(url, profile);
             } else {
                 logger.warn(MESSAGE_NO_FILTER_DEFINED, profile.getCanonical());
-                filter = new NonFilteringMessageFilter();
+                filter = new NonFilteringMessageFilter(profile);
             }
             messageFilters.put(profile, filter);
         }

@@ -3,7 +3,6 @@ package de.abda.fhir.validator.core;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.SingleValidationMessage;
-import ca.uhn.fhir.validation.ValidationResult;
 import de.abda.fhir.validator.core.filter.FilterEngine;
 import de.abda.fhir.validator.core.util.FileHelper;
 import de.abda.fhir.validator.core.util.Profile;
@@ -65,8 +64,8 @@ public class ReferenceValidator {
     public Map<ResultSeverityEnum, List<SingleValidationMessage>> validateFile(String inputFile) {
         logger.debug("Start validating File {}", inputFile);
         String validatorInputAsString = FileHelper.loadValidatorInputAsString(inputFile, false);
-        FilteredValidationResult filteredValidationResult = validateStringX(validatorInputAsString);
-        return filteredValidationResult.getValidationMessages().stream().collect(
+        ValidationResult validationResult = validateStringX(validatorInputAsString);
+        return validationResult.getValidationMessages().stream().collect(
                 Collectors.groupingBy(SingleValidationMessage::getSeverity, Collectors.toList()));
     }
 
@@ -88,8 +87,8 @@ public class ReferenceValidator {
      */
     public Map<ResultSeverityEnum, List<SingleValidationMessage>> validateString(String validatorInputAsString) {
         logger.debug("Start validating String input");
-        FilteredValidationResult filteredValidationResult = validateStringX(validatorInputAsString);
-        return filteredValidationResult.getValidationMessages().stream().collect(
+        ValidationResult validationResult = validateStringX(validatorInputAsString);
+        return validationResult.getValidationMessages().stream().collect(
                 Collectors.groupingBy(SingleValidationMessage::getSeverity, Collectors.toList()));    }
 
     /**
@@ -111,7 +110,7 @@ public class ReferenceValidator {
      * @param path file to be validated
      * @return the filtered result
      */
-    public FilteredValidationResult validateFileX(Path path) {
+    public ValidationResult validateFileX(Path path) {
         String validatorInputAsString = FileHelper.loadValidatorInputAsString(path.toString(), false);
         return validateStringX(validatorInputAsString);
     }
@@ -123,7 +122,7 @@ public class ReferenceValidator {
      */
     /*
      */
-    public FilteredValidationResult validateStringX(String validatorInputAsString) {
+    public ValidationResult validateStringX(String validatorInputAsString) {
         InputStream validatorInputStream = new ByteArrayInputStream(validatorInputAsString.getBytes(StandardCharsets.UTF_8));
         Profile profile = ProfileHelper.getProfileFromXmlStream(validatorInputStream);
         return validateStringX(validatorInputAsString, profile);
@@ -136,9 +135,9 @@ public class ReferenceValidator {
      * @param profile Profile to be used for validation
      * @return the validation result
      */
-    public FilteredValidationResult validateStringX(String validatorInputAsString, Profile profile) {
+    public ValidationResult validateStringX(String validatorInputAsString, Profile profile) {
         Validator validator = validatorHolder.getValidatorForProfile(profile);
-        ValidationResult validationResult = validator.validateWithResult(validatorInputAsString);
+        ca.uhn.fhir.validation.ValidationResult validationResult = validator.validateWithResult(validatorInputAsString);
         return filterEngine.filterMessages(profile, validationResult);
     }
 

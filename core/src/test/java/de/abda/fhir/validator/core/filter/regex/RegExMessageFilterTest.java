@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import de.abda.fhir.validator.core.util.Profile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -190,7 +191,7 @@ public class RegExMessageFilterTest {
 
     private RegExMessageFilter loadFilter(String cpResource) {
         URL url = this.getClass().getResource(cpResource);
-        return new RegExMessageFilter(url);
+        return new RegExMessageFilter(url, new Profile("test", "test", "1.2.3"));
     }
 
 
@@ -259,7 +260,7 @@ public class RegExMessageFilterTest {
      */
     @Test()
     public void testUnmarshallException() {
-        assertThrows(IllegalArgumentException.class, () -> new RegExMessageFilter(null));
+        assertThrows(NullPointerException.class, () -> new RegExMessageFilter(null, null));
     }
 
 
