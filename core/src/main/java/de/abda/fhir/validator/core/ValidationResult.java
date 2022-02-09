@@ -33,6 +33,12 @@ public class ValidationResult {
         this.profile = profile;
     }
 
+    /**
+     * States if the validation result is valid. The result is valid, only if {@link #getValidationMessages()} does not contain
+     * any messages. This implementation differs from {@link ca.uhn.fhir.validation.ValidationResult#isSuccessful()} where
+     * the list may contain messages with a severity equal or lower than  {@link ca.uhn.fhir.validation.ResultSeverityEnum#WARNING}
+     * @return true if valid, false otherwise.
+     */
     @XmlElement
     public boolean isValid() {
         return this.valid;
